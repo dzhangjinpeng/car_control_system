@@ -55,6 +55,8 @@ class Mode2ControlConfig:
 
 @dataclass(frozen=True)
 class GamepadConfig:
+    # 是否按手柄名称自动选择常见映射。
+    auto_detect: bool
     # 左摇杆 X 轴的原始编号。
     left_x_axis: int
     # 左摇杆 Y 轴的原始编号。
@@ -232,6 +234,7 @@ def load_control_config(
 def load_gamepad_config(path: str | Path = "configs/input.json") -> GamepadConfig:
     # 加载手柄按键和摇杆映射。
     data = _load_json(path)
+    data.setdefault("auto_detect", True)
     return GamepadConfig(**data)
 
 

@@ -1,4 +1,5 @@
 {
+  "auto_detect": true,
   "left_x_axis": 0,
   "left_y_axis": 1,
   "right_x_axis": 2,

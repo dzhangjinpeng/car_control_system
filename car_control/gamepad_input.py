@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import os
 import sys
+from dataclasses import replace
 
 from .config import GamepadConfig
 from .types import DriverInput
@@ -22,6 +23,115 @@ _XINPUT_BUTTON_MASKS = [
     0x0040,
     0x0080,
 ]
+
+
+def detect_pygame_gamepad_config(
+    base_config: GamepadConfig,
+    device_name: str,
+    axis_count: int,
+    button_count: int,
+) -> GamepadConfig:
+    # 不开启自动识别时，完全使用 input.json 里的手动配置。
+    if not base_config.auto_detect:
+        return base_config
+
+    normalized_name = device_name.lower()
+
+    # Xbox / XInput 类手柄在 SDL 下通常就是这套编号。
+    if "xbox" in normalized_name or "xinput" in normalized_name:
+        return replace(
+            base_config,
+            left_x_axis=0,
+            left_y_axis=1,
+            right_x_axis=2,
+            right_y_axis=3,
+            mode_button=1,
+            steering_lock_button=4,
+            drive_direction_button=5,
+            emergency_stop_button=6,
+        )
+
+    # PlayStation 手柄在 SDL/pygame 下常见右摇杆是 3/4，Share/Back 常见是 8。
+    if (
+        "playstation" in normalized_name
+        or "dualshock" in normalized_name
+        or "dualsense" in normalized_name
+        or "wireless controller" in normalized_name
+    ):
+        return replace(
+            base_config,
+            left_x_axis=0,
+            left_y_axis=1,
+            right_x_axis=3 if axis_count > 3 else base_config.right_x_axis,
+            right_y_axis=4 if axis_count > 4 else base_config.right_y_axis,
+            mode_button=1 if button_count > 1 else base_config.mode_button,
+            steering_lock_button=4 if button_count > 4 else base_config.steering_lock_button,
+            drive_direction_button=5 if button_count > 5 else base_config.drive_direction_button,
+            emergency_stop_button=8 if button_count > 8 else base_config.emergency_stop_button,
+        )
+
+    # 常见 SDL 手柄：轴数量够用时沿用 Xbox 风格，按键不乱猜。
+    if axis_count >= 4:
+        return replace(base_config, left_x_axis=0, left_y_axis=1, right_x_axis=2, right_y_axis=3)
+
+    return base_config
+
+
+def describe_gamepads() -> list[str]:
+    # 打印本机能看到的手柄名称、轴数量、按键数量，用于现场核对映射。
+    lines: list[str] = []
+    os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    try:
+        import pygame  # type: ignore
+    except ModuleNotFoundError:
+        lines.append("未安装 pygame，无法枚举 SDL/pygame 手柄。")
+    else:
+        pygame.init()
+        pygame.joystick.init()
+        try:
+            count = pygame.joystick.get_count()
+            if count <= 0:
+                lines.append("pygame 没有检测到手柄。")
+            for index in range(count):
+                joystick = pygame.joystick.Joystick(index)
+                joystick.init()
+                lines.append(
+                    f"pygame index={index} 名称={joystick.get_name()} "
+                    f"轴={joystick.get_numaxes()} 按键={joystick.get_numbuttons()} "
+                    f"帽键={joystick.get_numhats()}"
+                )
+                joystick.quit()
+        finally:
+            pygame.joystick.quit()
+            pygame.quit()
+
+    if sys.platform.startswith("win"):
+        xinput_lines = _describe_xinput_gamepads()
+        if xinput_lines:
+            lines.extend(xinput_lines)
+
+    return lines or ["没有检测到手柄。"]
+
+
+def _describe_xinput_gamepads() -> list[str]:
+    # Windows 上补充枚举 XInput 槽位，解决 Xbox 蓝牙手柄不出现在 pygame 列表里的情况。
+    for dll_name in ("xinput1_4", "xinput1_3", "xinput9_1_0"):
+        try:
+            dll = getattr(ctypes.windll, dll_name)
+            dll.XInputGetState.argtypes = [ctypes.c_uint, ctypes.POINTER(_XInputState)]
+            dll.XInputGetState.restype = ctypes.c_uint
+            break
+        except Exception:
+            dll = None
+    if dll is None:
+        return []
+
+    lines = []
+    for index in range(4):
+        state = _XInputState()
+        if dll.XInputGetState(index, ctypes.byref(state)) == 0:
+            lines.append(f"XInput index={index} 名称=Xbox/XInput 兼容手柄")
+    return lines
 
 
 class _XInputGamepad(ctypes.Structure):
@@ -205,12 +315,31 @@ class PygameGamepadInput:
 
         joystick = pygame.joystick.Joystick(self.device_index)
         joystick.init()
+        detected_config = detect_pygame_gamepad_config(
+            self.config,
+            joystick.get_name(),
+            joystick.get_numaxes(),
+            joystick.get_numbuttons(),
+        )
+        if detected_config != self.config:
+            print(
+                f"已自动匹配手柄映射：{joystick.get_name()} "
+                f"轴=({detected_config.left_x_axis},{detected_config.left_y_axis},"
+                f"{detected_config.right_x_axis},{detected_config.right_y_axis}) "
+                f"按键=(模式{detected_config.mode_button},转向锁{detected_config.steering_lock_button},"
+                f"方向锁{detected_config.drive_direction_button},急停{detected_config.emergency_stop_button})"
+            )
+        self.config = detected_config
         self._pygame = pygame
         self._joystick = joystick
         return None
 
     def _axis(self, index: int) -> float:
+        if index < 0 or index >= self._joystick.get_numaxes():
+            return 0.0
         return float(self._joystick.get_axis(index))
 
     def _button(self, index: int) -> int:
+        if index < 0 or index >= self._joystick.get_numbuttons():
+            return 0
         return int(self._joystick.get_button(index))

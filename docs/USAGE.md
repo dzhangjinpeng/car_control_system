@@ -92,6 +92,34 @@ python remote_control_sender.py --host 192.168.1.50 --input gamepad
 - `python3 car_control_system.py --input hybrid --telemetry`：板子本地 + 远程
 - `python remote_control_sender.py --host <板子IP> --input gamepad`：电脑发手柄
 
+## 手柄自动匹配
+
+`configs/input.json` 默认开启：
+
+```json
+"auto_detect": true
+```
+
+程序会根据手柄名称自动匹配常见布局：
+
+- Xbox / XInput 手柄
+- PlayStation DualShock / DualSense 手柄
+- 常见 SDL 通用手柄
+
+查看系统识别到的手柄：
+
+```bash
+python3 car_control_system.py --list-gamepads
+```
+
+电脑端远程发送器也可以查看：
+
+```powershell
+python remote_control_sender.py --list-gamepads
+```
+
+如果自动匹配不准，把 `auto_detect` 改成 `false`，再手动修改 `left_x_axis`、`right_x_axis` 和按键编号。
+
 ## 你现场先这么跑
 
 1. 先确认板子和电脑在同一局域网
@@ -99,4 +127,3 @@ python remote_control_sender.py --host 192.168.1.50 --input gamepad
 3. 在电脑上启动 `remote_control_sender.py`
 4. 先试前进、后退、转向
 5. 再试断开电脑发送，看板子是否回到本地手柄
-

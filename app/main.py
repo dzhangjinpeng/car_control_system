@@ -14,7 +14,7 @@ from car_control.config import (
     load_network_config,
 )
 from car_control.controller import CarController
-from car_control.gamepad_input import PygameGamepadInput
+from car_control.gamepad_input import PygameGamepadInput, describe_gamepads
 from car_control.keyboard_input import ScriptedInput, neutral_input
 from car_control.motor_client import CxxMotorClient, MockMotorClient, MotorClient
 from car_control.network_input import HybridInputSource, UdpRemoteInput
@@ -128,6 +128,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--control-config", default="configs/control.json")
     parser.add_argument("--input-config", default="configs/input.json")
     parser.add_argument("--network-config", default="configs/network.json")
+    parser.add_argument("--list-gamepads", action="store_true", help="list detected gamepads and exit")
     parser.add_argument(
         "--max-loops",
         type=int,
@@ -140,6 +141,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+
+    if args.list_gamepads:
+        for line in describe_gamepads():
+            print(line)
+        return 0
 
     hardware = load_hardware_config(args.hardware_config)
     control = load_control_config(args.control_config, profile_name=args.control_profile)
