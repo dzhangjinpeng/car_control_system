@@ -122,12 +122,14 @@ python3 scripts/calibrate_hardware.py --all --save-flash
 
 ```bash
 python3 scripts/calibrate_hardware.py --probe
+python3 scripts/calibrate_hardware.py --verify
 python3 scripts/calibrate_hardware.py --calibrate-drive --write-config configs/hardware.local.json
 python3 scripts/calibrate_hardware.py --calibrate-steer --save-flash
 ```
 
 说明：
 
+- `--verify` 会先检查 `hardware.json` 的配置自洽性，再检查电机在线响应
 - `--calibrate-drive` 会逐个点动驱动轮，让你确认正反
 - `--calibrate-steer` 会把当前摆正位置写成零点
 - `--write-config` 只保存驱动反向列表，不会乱改电机 ID 映射

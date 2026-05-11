@@ -139,8 +139,15 @@ python3 scripts/calibrate_hardware.py --all --save-flash
 它会：
 
 - 打印每个电机的实时回显
+- 先检查配置是否自洽，再检查电机是否在线响应
 - 点动驱动轮，让你确认正反
 - 把转向轮当前摆正位置写成零点
 - 需要的话还能写出 `configs/hardware.local.json`
 
 这比直接改控制逻辑更稳。
+
+如果你只想先验一遍，不做任何改写，跑：
+
+```bash
+python3 scripts/calibrate_hardware.py --verify
+```

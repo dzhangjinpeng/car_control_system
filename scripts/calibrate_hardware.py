@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hardware-config", default="configs/hardware.json")
     parser.add_argument("--mock", action="store_true", help="use mock motor client")
     parser.add_argument("--probe", action="store_true", help="print live motor status")
+    parser.add_argument("--verify", action="store_true", help="check config consistency and live response")
     parser.add_argument("--calibrate-drive", action="store_true", help="calibrate drive motor direction")
     parser.add_argument("--calibrate-steer", action="store_true", help="calibrate steering zero")
     parser.add_argument("--write-config", default="", help="write updated hardware config to this path")
@@ -65,6 +66,55 @@ def print_probe(hardware: HardwareConfig, motors: MotorClient) -> None:
             print(f"ID {motor_id:02d}: 读取失败 -> {exc}")
 
 
+def validate_hardware_config(hardware: HardwareConfig) -> list[str]:
+    # 只检查配置本身是否自洽，不依赖现场硬件。
+    issues: list[str] = []
+    all_ids = set(hardware.motor_ids)
+    if len(all_ids) != len(hardware.motor_ids):
+        issues.append("motor_ids 有重复")
+    if not set(hardware.drive_motor_ids).issubset(all_ids):
+        issues.append("drive_motor_ids 不是 motor_ids 的子集")
+    if not set(hardware.steer_motor_ids).issubset(all_ids):
+        issues.append("steer_motor_ids 不是 motor_ids 的子集")
+    if set(hardware.drive_motor_ids) & set(hardware.steer_motor_ids):
+        issues.append("drive_motor_ids 和 steer_motor_ids 有重叠")
+    if not set(hardware.inverted_drive_motor_ids).issubset(set(hardware.drive_motor_ids)):
+        issues.append("inverted_drive_motor_ids 不是 drive_motor_ids 的子集")
+    if hardware.gear_ratio <= 0:
+        issues.append("gear_ratio 必须大于 0")
+    if hardware.wheel_radius <= 0:
+        issues.append("wheel_radius 必须大于 0")
+    if hardware.wheelbase <= 0:
+        issues.append("wheelbase 必须大于 0")
+    if hardware.track_width <= 0:
+        issues.append("track_width 必须大于 0")
+    if len(hardware.drive_motor_roles) != 4:
+        issues.append("drive_motor_roles 数量不是 4")
+    if len(hardware.steer_motor_roles) != 4:
+        issues.append("steer_motor_roles 数量不是 4")
+    role_ids = set(hardware.drive_motor_roles.values()) | set(hardware.steer_motor_roles.values())
+    if not role_ids.issubset(all_ids):
+        issues.append("角色映射里有未知电机 ID")
+    return issues
+
+
+def print_validation_report(hardware: HardwareConfig) -> bool:
+    # 让用户一眼看到配置是否自洽。
+    issues = validate_hardware_config(hardware)
+    print("\n=== 配置校验 ===")
+    if not issues:
+        print("PASS: hardware.json 自洽")
+        print(f"驱动轮 ID: {hardware.drive_motor_ids}")
+        print(f"转向轮 ID: {hardware.steer_motor_ids}")
+        print(f"驱动反向 ID: {hardware.inverted_drive_motor_ids}")
+        return True
+
+    print("FAIL: hardware.json 有问题")
+    for issue in issues:
+        print(f"- {issue}")
+    return False
+
+
 def stop_drive_motors(hardware: HardwareConfig, motors: MotorClient) -> None:
     # 任何校准前都先把驱动轮停掉。
     for motor_id in hardware.drive_motor_ids:
@@ -72,6 +122,22 @@ def stop_drive_motors(hardware: HardwareConfig, motors: MotorClient) -> None:
             motors.control_vel(motor_id, 0.0)
         except Exception:
             pass
+
+
+def verify_live_response(hardware: HardwareConfig, motors: MotorClient) -> bool:
+    # 检查硬件是否真的能读、能写、能响应。
+    print("\n=== 在线响应检查 ===")
+    ok = True
+    for motor_id in hardware.motor_ids:
+        try:
+            pos = motors.get_position(motor_id)
+            vel = motors.get_velocity(motor_id)
+            tau = motors.get_tau(motor_id)
+            print(f"PASS: ID {motor_id:02d} 响应正常 pos={pos:+.3f} vel={vel:+.3f} tau={tau:+.3f}")
+        except Exception as exc:
+            ok = False
+            print(f"FAIL: ID {motor_id:02d} 无响应 -> {exc}")
+    return ok
 
 
 def calibrate_drive_direction(hardware: HardwareConfig, motors: MotorClient, pulse_speed: float, pulse_seconds: float) -> list[int]:
@@ -141,7 +207,7 @@ def main() -> int:
     hardware = load_hardware_config(args.hardware_config)
     motors = build_motor_client(hardware, args.mock)
 
-    run_all = args.all or not any([args.probe, args.calibrate_drive, args.calibrate_steer])
+    run_all = args.all or not any([args.probe, args.verify, args.calibrate_drive, args.calibrate_steer])
 
     try:
         motors.open()
@@ -150,6 +216,15 @@ def main() -> int:
 
         if args.probe or run_all:
             print_probe(hardware, motors)
+
+        if args.verify or run_all:
+            config_ok = print_validation_report(hardware)
+            live_ok = verify_live_response(hardware, motors)
+            if config_ok and live_ok:
+                print("\nPASS: 基础校验通过。")
+                print("下一步如果要确认轮子方向和零点，再跑校准模式。")
+            else:
+                print("\nFAIL: 先把上面的错误修完，再继续。")
 
         inverted_drive_motor_ids = list(hardware.inverted_drive_motor_ids)
         if args.calibrate_drive or run_all:
