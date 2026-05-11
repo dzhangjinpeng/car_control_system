@@ -124,16 +124,20 @@ python3 scripts/calibrate_hardware.py --all --save-flash
 ```bash
 python3 scripts/calibrate_hardware.py --probe
 python3 scripts/calibrate_hardware.py --verify
+python3 scripts/calibrate_hardware.py --verify-steer-zero
 python3 scripts/calibrate_hardware.py --calibrate-drive --write-config configs/hardware.local.json
 python3 scripts/calibrate_hardware.py --calibrate-steer --save-flash
+python3 scripts/calibrate_hardware.py --set-steer-zero --save-flash
 python3 scripts/calibrate_hardware.py --all --save-flash --report-file logs/calibration.json
 ```
 
 说明：
 
 - `--verify` 会先检查 `hardware.json` 的配置自洽性，再检查电机在线响应
+- `--verify-steer-zero` 会检查转向零点是否接近 0
 - `--calibrate-drive` 会逐个点动驱动轮，让你确认正反
 - `--calibrate-steer` 会把当前摆正位置写成零点
+- `--set-steer-zero` 是独立的转向零点设置命令
 - `--write-config` 只保存驱动反向列表，不会乱改电机 ID 映射
 - `--save-flash` 会把零点保存到电机 flash
 - `--report-file` 会把整次校准过程保存成 JSON 报告

@@ -156,6 +156,11 @@ python3 scripts/calibrate_hardware.py --all --save-flash
 
 - 打印每个电机的实时回显
 - 先检查配置是否自洽，再检查电机是否在线响应
+- 可以单独验证转向零点：
+
+```bash
+python3 scripts/calibrate_hardware.py --verify-steer-zero
+```
 - 点动驱动轮，让你确认正反
 - 把转向轮当前摆正位置写成零点
 - 需要的话还能写出 `configs/hardware.local.json`

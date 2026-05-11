@@ -35,8 +35,10 @@ python3 scripts/calibrate_hardware.py [options]
 常用参数：
 
 - `--verify`
+- `--verify-steer-zero`
 - `--calibrate-drive`
 - `--calibrate-steer`
+- `--set-steer-zero`
 - `--save-flash`
 - `--report-file logs/calibration.json`
 
@@ -103,6 +105,7 @@ python3 scripts/calibrate_hardware.py [options]
 - `live_checks`
 - `drive_direction_result`
 - `calibrated_steer_ids`
+- `steer_zero_checks`
 - `result_inverted_drive_motor_ids`
 - `save_flash`
 - `notes`
@@ -153,4 +156,3 @@ python3 scripts/calibrate_hardware.py [options]
 - `configs/hardware.json`
 
 只要前端能读这三个文件，就已经能看出大部分硬件和逻辑问题。
-

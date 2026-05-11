@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 from dataclasses import asdict
@@ -23,8 +24,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mock", action="store_true", help="use mock motor client")
     parser.add_argument("--probe", action="store_true", help="print live motor status")
     parser.add_argument("--verify", action="store_true", help="check config consistency and live response")
+    parser.add_argument("--verify-steer-zero", action="store_true", help="check whether steering zero is close to center")
     parser.add_argument("--calibrate-drive", action="store_true", help="calibrate drive motor direction")
     parser.add_argument("--calibrate-steer", action="store_true", help="calibrate steering zero")
+    parser.add_argument("--set-steer-zero", action="store_true", help="set steering zero without drive calibration")
     parser.add_argument("--write-config", default="", help="write updated hardware config to this path")
     parser.add_argument("--report-file", default="", help="write calibration report to this path")
     parser.add_argument("--pulse-speed", type=float, default=0.2, help="drive pulse speed in rad/s")
@@ -41,9 +44,12 @@ def build_motor_client(hardware: HardwareConfig, mock: bool) -> MotorClient:
     return CxxMotorClient(hardware.bridge_library, hardware.serial_number, hardware.nom_baud, hardware.dat_baud)
 
 
-def prompt_yes_no(message: str, default: bool = False) -> bool:
+def prompt_yes_no(message: str, default: bool = False, interactive: bool = True) -> bool:
     # 现场确认用，避免误操作。
     suffix = "[Y/n]" if default else "[y/N]"
+    if not interactive:
+        print(f"{message} {suffix} -> 自动{'是' if default else '否'}")
+        return default
     while True:
         reply = input(f"{message} {suffix} ").strip().lower()
         if not reply:
@@ -158,19 +164,29 @@ def verify_live_response(hardware: HardwareConfig, motors: MotorClient) -> tuple
     return ok, records
 
 
-def calibrate_drive_direction(hardware: HardwareConfig, motors: MotorClient, pulse_speed: float, pulse_seconds: float) -> list[int]:
+def calibrate_drive_direction(
+    hardware: HardwareConfig,
+    motors: MotorClient,
+    pulse_speed: float,
+    pulse_seconds: float,
+    interactive: bool = True,
+) -> list[int]:
     # 通过低速点动判断哪个驱动电机需要反向。
     print("\n=== 驱动方向校准 ===")
     print("请把车架支起来，确保轮子离地。")
     print("接下来会一次只点动一个驱动电机，确认轮子正向转动时是不是在推车前进。")
-    if not prompt_yes_no("确认已经做好安全准备了吗？", default=False):
+    if not interactive:
+        print("当前为非交互模式，跳过驱动方向人工校准。")
+        return list(hardware.inverted_drive_motor_ids)
+
+    if not prompt_yes_no("确认已经做好安全准备了吗？", default=False, interactive=interactive):
         return list(hardware.inverted_drive_motor_ids)
 
     inverted = []
     for motor_id in hardware.drive_motor_ids:
         role = next((name for name, value in hardware.drive_motor_roles.items() if value == motor_id), str(motor_id))
         print(f"\n准备点动驱动电机 {motor_id} ({role})")
-        if not prompt_yes_no("开始点动吗？", default=True):
+        if not prompt_yes_no("开始点动吗？", default=True, interactive=interactive):
             continue
         try:
             motors.control_vel(motor_id, pulse_speed)
@@ -195,11 +211,21 @@ def calibrate_drive_direction(hardware: HardwareConfig, motors: MotorClient, pul
     return inverted
 
 
-def calibrate_steer_zero(hardware: HardwareConfig, motors: MotorClient, save_flash: bool) -> None:
+def calibrate_steer_zero(
+    hardware: HardwareConfig,
+    motors: MotorClient,
+    save_flash: bool,
+    interactive: bool = True,
+    auto_accept: bool = False,
+) -> None:
     # 让用户把四个转向轮人工摆正，然后把当前角度写成零点。
     print("\n=== 转向零点校准 ===")
     print("请把四个转向轮手动摆正，再继续。")
-    if not prompt_yes_no("确认轮子已经摆正了吗？", default=False):
+    if not prompt_yes_no(
+        "确认轮子已经摆正了吗？",
+        default=auto_accept,
+        interactive=interactive,
+    ):
         return
 
     for motor_id in hardware.steer_motor_ids:
@@ -208,6 +234,51 @@ def calibrate_steer_zero(hardware: HardwareConfig, motors: MotorClient, save_fla
         motors.set_zero_position(motor_id)
         if save_flash:
             motors.save_motor_param(motor_id)
+
+
+def verify_steer_zero(
+    hardware: HardwareConfig,
+    motors: MotorClient,
+    tolerance_deg: float,
+) -> tuple[bool, list[dict[str, object]]]:
+    # 检查转向轮当前是否已经接近零位。
+    print("\n=== 转向零点验证 ===")
+    ok = True
+    records: list[dict[str, object]] = []
+    for motor_id in hardware.steer_motor_ids:
+        role = next((name for name, value in hardware.steer_motor_roles.items() if value == motor_id), str(motor_id))
+        try:
+            motor_rad = motors.get_position(motor_id)
+            output_deg = math.degrees(motor_rad / hardware.gear_ratio)
+            passed = abs(output_deg) <= tolerance_deg
+            status = "ok" if passed else "warn"
+            ok = ok and passed
+            print(
+                f"{'PASS' if passed else 'WARN'}: ID {motor_id:02d} ({role}) "
+                f"output={output_deg:+.2f}deg tolerance=±{tolerance_deg:.2f}deg"
+            )
+            records.append(
+                {
+                    "motor_id": motor_id,
+                    "role": role,
+                    "status": status,
+                    "position_rad": motor_rad,
+                    "output_deg": output_deg,
+                    "tolerance_deg": tolerance_deg,
+                }
+            )
+        except Exception as exc:
+            ok = False
+            print(f"FAIL: ID {motor_id:02d} ({role}) 零点读取失败 -> {exc}")
+            records.append(
+                {
+                    "motor_id": motor_id,
+                    "role": role,
+                    "status": "fail",
+                    "error": str(exc),
+                }
+            )
+    return ok, records
 
 
 def write_hardware_config(path: str, hardware: HardwareConfig, inverted_drive_motor_ids: list[int]) -> None:
@@ -232,8 +303,18 @@ def main() -> int:
     args = parse_args()
     hardware = load_hardware_config(args.hardware_config)
     motors = build_motor_client(hardware, args.mock)
+    interactive = sys.stdin.isatty() and not args.mock
 
-    run_all = args.all or not any([args.probe, args.verify, args.calibrate_drive, args.calibrate_steer])
+    run_all = args.all or not any(
+        [
+            args.probe,
+            args.verify,
+            args.verify_steer_zero,
+            args.calibrate_drive,
+            args.calibrate_steer,
+            args.set_steer_zero,
+        ]
+    )
     report: dict[str, object] = {
         "hardware_config": {
             "source": args.hardware_config,
@@ -247,6 +328,7 @@ def main() -> int:
         "live_checks": [],
         "drive_direction_result": [],
         "calibrated_steer_ids": [],
+        "steer_zero_checks": [],
         "notes": [],
     }
 
@@ -270,13 +352,31 @@ def main() -> int:
                 print("\nFAIL: 先把上面的错误修完，再继续。")
                 report["notes"].append("基础校验未通过")
 
+        if args.verify_steer_zero:
+            zero_ok, zero_records = verify_steer_zero(hardware, motors, tolerance_deg=5.0)
+            report["steer_zero_checks"] = zero_records
+            if not zero_ok:
+                report["notes"].append("转向零点未对齐")
+
         inverted_drive_motor_ids = list(hardware.inverted_drive_motor_ids)
         if args.calibrate_drive or run_all:
-            inverted_drive_motor_ids = calibrate_drive_direction(hardware, motors, args.pulse_speed, args.pulse_seconds)
+            inverted_drive_motor_ids = calibrate_drive_direction(
+                hardware,
+                motors,
+                args.pulse_speed,
+                args.pulse_seconds,
+                interactive=interactive,
+            )
             report["drive_direction_result"] = inverted_drive_motor_ids
 
-        if args.calibrate_steer or run_all:
-            calibrate_steer_zero(hardware, motors, save_flash=args.save_flash)
+        if args.calibrate_steer or args.set_steer_zero or run_all:
+            calibrate_steer_zero(
+                hardware,
+                motors,
+                save_flash=args.save_flash,
+                interactive=interactive,
+                auto_accept=args.mock,
+            )
             report["calibrated_steer_ids"] = hardware.steer_motor_ids
 
         if args.write_config:
