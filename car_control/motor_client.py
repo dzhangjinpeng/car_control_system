@@ -35,6 +35,12 @@ class MotorClient(Protocol):
     def get_tau(self, motor_id: int) -> float:
         ...
 
+    def get_target_position(self, motor_id: int) -> float:
+        ...
+
+    def get_target_velocity(self, motor_id: int) -> float:
+        ...
+
     def set_zero_position(self, motor_id: int) -> None:
         ...
 
@@ -48,6 +54,8 @@ class MockMotorClient:
     positions: Dict[int, float] = field(default_factory=dict)
     velocities: Dict[int, float] = field(default_factory=dict)
     torques: Dict[int, float] = field(default_factory=dict)
+    target_positions: Dict[int, float] = field(default_factory=dict)
+    target_velocities: Dict[int, float] = field(default_factory=dict)
     commands: List[str] = field(default_factory=list)
     opened: bool = False
 
@@ -68,11 +76,14 @@ class MockMotorClient:
 
     def control_vel(self, motor_id: int, velocity: float) -> None:
         self.velocities[motor_id] = velocity
+        self.target_velocities[motor_id] = velocity
         self.commands.append(f"vel:{motor_id}:{velocity:.6f}")
 
     def control_pos_vel(self, motor_id: int, position: float, velocity: float) -> None:
         self.positions[motor_id] = position
         self.velocities[motor_id] = velocity
+        self.target_positions[motor_id] = position
+        self.target_velocities[motor_id] = velocity
         self.commands.append(f"pos_vel:{motor_id}:{position:.6f}:{velocity:.6f}")
 
     def get_position(self, motor_id: int) -> float:
@@ -83,6 +94,12 @@ class MockMotorClient:
 
     def get_tau(self, motor_id: int) -> float:
         return self.torques.get(motor_id, 0.0)
+
+    def get_target_position(self, motor_id: int) -> float:
+        return self.target_positions.get(motor_id, self.positions.get(motor_id, 0.0))
+
+    def get_target_velocity(self, motor_id: int) -> float:
+        return self.target_velocities.get(motor_id, self.velocities.get(motor_id, 0.0))
 
     def set_zero_position(self, motor_id: int) -> None:
         self.commands.append(f"set_zero:{motor_id}")
@@ -100,6 +117,8 @@ class CxxMotorClient:
         self.dat_baud = dat_baud
         self._lib: ctypes.CDLL | None = None
         self._handle: ctypes.c_void_p | None = None
+        self._target_positions: Dict[int, float] = {}
+        self._target_velocities: Dict[int, float] = {}
 
     def open(self) -> None:
         # 延迟加载共享库，这样 mock 运行时不依赖本地原生组件。
@@ -128,6 +147,7 @@ class CxxMotorClient:
 
     def control_vel(self, motor_id: int, velocity: float) -> None:
         self._call("dm_bridge_control_vel", ctypes.c_uint16(motor_id), ctypes.c_float(velocity))
+        self._target_velocities[motor_id] = velocity
 
     def control_pos_vel(self, motor_id: int, position: float, velocity: float) -> None:
         self._call(
@@ -136,6 +156,8 @@ class CxxMotorClient:
             ctypes.c_float(position),
             ctypes.c_float(velocity),
         )
+        self._target_positions[motor_id] = position
+        self._target_velocities[motor_id] = velocity
 
     def get_position(self, motor_id: int) -> float:
         return self._read_float("dm_bridge_get_position", motor_id)
@@ -145,6 +167,12 @@ class CxxMotorClient:
 
     def get_tau(self, motor_id: int) -> float:
         return self._read_float("dm_bridge_get_tau", motor_id)
+
+    def get_target_position(self, motor_id: int) -> float:
+        return self._target_positions.get(motor_id, 0.0)
+
+    def get_target_velocity(self, motor_id: int) -> float:
+        return self._target_velocities.get(motor_id, 0.0)
 
     def set_zero_position(self, motor_id: int) -> None:
         self._call("dm_bridge_set_zero_position", ctypes.c_uint16(motor_id))

@@ -19,7 +19,7 @@ from car_control.gamepad_input import PygameGamepadInput, describe_gamepads
 from car_control.keyboard_input import ScriptedInput, neutral_input
 from car_control.motor_client import CxxMotorClient, MockMotorClient, MotorClient
 from car_control.network_input import HybridInputSource, UdpRemoteInput
-from car_control.telemetry import TelemetryConsole, TelemetryJsonlWriter, build_telemetry_frame
+from car_control.telemetry import MotorTelemetry, TelemetryConsole, TelemetryJsonlWriter, build_telemetry_frame
 from car_control.state import (
     DRIVE_DIRECTION_AUTO,
     DRIVE_DIRECTION_FORWARD_ONLY,
@@ -68,22 +68,48 @@ def build_demo_input_provider(args: argparse.Namespace) -> Callable[[], DriverIn
     raise ValueError(f"unsupported input mode: {args.input}")
 
 
-def _drive_summary(hardware: HardwareConfig, motors: MotorClient) -> str:
-    # 打印驱动轮电机目标速度，单位是电机接口使用的 rad/s。
-    parts = []
+def _drive_telemetry(hardware: HardwareConfig, motors: MotorClient) -> tuple[str, list[MotorTelemetry]]:
+    # 驱动轮速度遥测，单位是电机接口使用的 rad/s。
+    parts: list[str] = []
+    items: list[MotorTelemetry] = []
     for role, motor_id in hardware.drive_motor_roles.items():
-        parts.append(f"{role}#{motor_id}:{motors.get_velocity(motor_id):+.2f}")
-    return " ".join(parts)
+        target = motors.get_target_velocity(motor_id)
+        actual = motors.get_velocity(motor_id)
+        error = target - actual
+        parts.append(f"{role}#{motor_id}:目标{target:+.2f}/实测{actual:+.2f}")
+        items.append(
+            MotorTelemetry(
+                role=role,
+                motor_id=motor_id,
+                target=target,
+                actual=actual,
+                error=error,
+                unit="rad/s",
+            )
+        )
+    return " ".join(parts), items
 
 
-def _steer_summary(hardware: HardwareConfig, motors: MotorClient) -> str:
+def _steer_telemetry(hardware: HardwareConfig, motors: MotorClient) -> tuple[str, list[MotorTelemetry]]:
     # 转向电机保存的是电机轴弧度，这里换算回轮端角度，方便肉眼判断。
-    parts = []
+    parts: list[str] = []
+    items: list[MotorTelemetry] = []
     for role, motor_id in hardware.steer_motor_roles.items():
-        motor_rad = motors.get_position(motor_id)
-        output_deg = math.degrees(motor_rad / hardware.gear_ratio)
-        parts.append(f"{role}#{motor_id}:{output_deg:+.1f}deg")
-    return " ".join(parts)
+        target_deg = math.degrees(motors.get_target_position(motor_id) / hardware.gear_ratio)
+        actual_deg = math.degrees(motors.get_position(motor_id) / hardware.gear_ratio)
+        error_deg = target_deg - actual_deg
+        parts.append(f"{role}#{motor_id}:目标{target_deg:+.1f}/实测{actual_deg:+.1f}deg")
+        items.append(
+            MotorTelemetry(
+                role=role,
+                motor_id=motor_id,
+                target=target_deg,
+                actual=actual_deg,
+                error=error_deg,
+                unit="deg",
+            )
+        )
+    return " ".join(parts), items
 
 
 def build_telemetry_observer(
@@ -106,6 +132,8 @@ def build_telemetry_observer(
             return
         last_print = now
 
+        drive_summary, drive_motors = _drive_telemetry(hardware, motors)
+        steer_summary, steer_motors = _steer_telemetry(hardware, motors)
         frame = build_telemetry_frame(
             loop_index=loop_index,
             mode_name=MODE_NAMES.get(state.mode, str(state.mode)),
@@ -114,8 +142,10 @@ def build_telemetry_observer(
             drive_direction_name=DIRECTION_NAMES.get(state.drive_direction_mode, str(state.drive_direction_mode)),
             emergency_stop=driver_input.emergency_stop_button,
             driver_input=driver_input,
-            drive_summary=_drive_summary(hardware, motors),
-            steer_summary=_steer_summary(hardware, motors),
+            drive_summary=drive_summary,
+            steer_summary=steer_summary,
+            drive_motors=drive_motors,
+            steer_motors=steer_motors,
         )
         if writer is not None:
             writer.write(frame)

@@ -12,6 +12,22 @@ from .types import DriverInput
 
 
 @dataclass(frozen=True)
+class MotorTelemetry:
+    # 电机角色，例如 front_left / rear_right。
+    role: str
+    # 电机 CAN ID。
+    motor_id: int
+    # 目标值，驱动轮单位 rad/s，转向轮单位 deg。
+    target: float
+    # 实测值，驱动轮单位 rad/s，转向轮单位 deg。
+    actual: float
+    # 目标值和实测值的差值。
+    error: float
+    # 单位说明。
+    unit: str
+
+
+@dataclass(frozen=True)
 class TelemetryFrame:
     # 这一帧的采样时间。
     timestamp: float
@@ -33,6 +49,10 @@ class TelemetryFrame:
     drive_summary: str
     # 转向轮摘要文本。
     steer_summary: str
+    # 结构化驱动轮遥测。
+    drive_motors: list[MotorTelemetry]
+    # 结构化转向轮遥测。
+    steer_motors: list[MotorTelemetry]
     # 附加状态说明。
     notice: str = ""
 
@@ -56,6 +76,8 @@ class TelemetryJsonlWriter:
             "driver_input": asdict(frame.driver_input),
             "drive_summary": frame.drive_summary,
             "steer_summary": frame.steer_summary,
+            "drive_motors": [asdict(item) for item in frame.drive_motors],
+            "steer_motors": [asdict(item) for item in frame.steer_motors],
             "notice": frame.notice,
         }
         self._stream.write(json.dumps(payload, ensure_ascii=False) + "\n")
@@ -124,6 +146,8 @@ class TelemetryConsole:
             ),
             self._pad_line(f"驱动: {frame.drive_summary}", width),
             self._pad_line(f"转向: {frame.steer_summary}", width),
+            self._pad_line("驱动误差: " + self._motor_error_summary(frame.drive_motors), width),
+            self._pad_line("转向误差: " + self._motor_error_summary(frame.steer_motors), width),
         ]
         if frame.notice:
             lines.append(self._pad_line(f"提示: {frame.notice}", width))
@@ -142,6 +166,8 @@ class TelemetryConsole:
             f"右摇杆=({frame.driver_input.right_x:+.2f},{frame.driver_input.right_y:+.2f})",
             f"驱动[{frame.drive_summary}]",
             f"转向[{frame.steer_summary}]",
+            f"驱动误差[{self._motor_error_summary(frame.drive_motors)}]",
+            f"转向误差[{self._motor_error_summary(frame.steer_motors)}]",
         ]
         if frame.notice:
             parts.append(f"提示={frame.notice}")
@@ -184,6 +210,14 @@ class TelemetryConsole:
             out.append(char)
         return "".join(out)
 
+    def _motor_error_summary(self, motors: list[MotorTelemetry]) -> str:
+        if not motors:
+            return "无"
+        parts = []
+        for item in motors:
+            parts.append(f"{item.role}#{item.motor_id}:目标{item.target:+.2f}/实测{item.actual:+.2f}/误差{item.error:+.2f}{item.unit}")
+        return " ".join(parts)
+
 
 def build_telemetry_frame(
     loop_index: int,
@@ -195,6 +229,8 @@ def build_telemetry_frame(
     driver_input: DriverInput,
     drive_summary: str,
     steer_summary: str,
+    drive_motors: list[MotorTelemetry] | None = None,
+    steer_motors: list[MotorTelemetry] | None = None,
     notice: str = "",
 ) -> TelemetryFrame:
     # 统一组装一帧遥测数据，给控制台和文件日志共用。
@@ -209,5 +245,7 @@ def build_telemetry_frame(
         driver_input=driver_input,
         drive_summary=drive_summary,
         steer_summary=steer_summary,
+        drive_motors=drive_motors or [],
+        steer_motors=steer_motors or [],
         notice=notice,
     )

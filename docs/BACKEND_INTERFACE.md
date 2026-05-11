@@ -79,7 +79,29 @@ python3 scripts/calibrate_hardware.py [options]
 - `driver_input`
 - `drive_summary`
 - `steer_summary`
+- `drive_motors`
+- `steer_motors`
 - `notice`
+
+`drive_motors` 和 `steer_motors` 是给前端用的结构化电机遥测。
+
+单个驱动电机字段：
+
+- `role`
+- `motor_id`
+- `target`：目标速度，单位 `rad/s`
+- `actual`：实测速度，单位 `rad/s`
+- `error`：目标减实测
+- `unit`
+
+单个转向电机字段：
+
+- `role`
+- `motor_id`
+- `target`：目标轮端角度，单位 `deg`
+- `actual`：实测轮端角度，单位 `deg`
+- `error`：目标减实测
+- `unit`
 
 ### 建议前端展示
 
