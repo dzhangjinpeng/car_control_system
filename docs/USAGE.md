@@ -128,6 +128,22 @@ python remote_control_sender.py --list-gamepads
 4. 先试前进、后退、转向
 5. 再试断开电脑发送，看板子是否回到本地手柄
 
+## 更好看的日志
+
+如果你在终端里直接跑，默认会显示刷新式状态面板，而不是一长串单行日志。
+
+你还可以把每一帧记录到文件：
+
+```bash
+python3 car_control_system.py --input hybrid --telemetry --log-file logs/run.jsonl
+```
+
+如果你想强制用单行文本：
+
+```bash
+python3 car_control_system.py --input hybrid --telemetry --plain-telemetry
+```
+
 ## 硬件校准
 
 如果你怀疑电机方向、零点或者角色映射有问题，先跑：

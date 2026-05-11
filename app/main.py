@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import sys
 import time
 from typing import Callable
 
@@ -18,6 +19,7 @@ from car_control.gamepad_input import PygameGamepadInput, describe_gamepads
 from car_control.keyboard_input import ScriptedInput, neutral_input
 from car_control.motor_client import CxxMotorClient, MockMotorClient, MotorClient
 from car_control.network_input import HybridInputSource, UdpRemoteInput
+from car_control.telemetry import TelemetryConsole, TelemetryJsonlWriter, build_telemetry_frame
 from car_control.state import (
     DRIVE_DIRECTION_AUTO,
     DRIVE_DIRECTION_FORWARD_ONLY,
@@ -88,9 +90,14 @@ def build_telemetry_observer(
     hardware: HardwareConfig,
     control: ControlConfig,
     source_name: Callable[[], str],
+    log_file: str | None = None,
+    dashboard: bool = True,
+    use_color: bool | None = None,
 ):
-    # 按固定间隔打印一行调试信息，避免主循环 500Hz 时刷屏。
+    # 按固定间隔刷新面板，避免主循环 500Hz 时刷屏。
     last_print = 0.0
+    console = TelemetryConsole(use_color=use_color)
+    writer = TelemetryJsonlWriter(log_file) if log_file else None
 
     def observe(loop_index: int, driver_input: DriverInput, state: ControlState, motors: MotorClient) -> None:
         nonlocal last_print
@@ -99,21 +106,26 @@ def build_telemetry_observer(
             return
         last_print = now
 
-        print(
-            "\r"
-            f"循环={loop_index:06d} "
-            f"模式={MODE_NAMES.get(state.mode, state.mode)} "
-            f"输入源={source_name()} "
-            f"转向锁={int(state.steering_locked)} "
-            f"方向锁={DIRECTION_NAMES.get(state.drive_direction_mode, state.drive_direction_mode)} "
-            f"急停={int(driver_input.emergency_stop_button)} "
-            f"左摇杆=({driver_input.left_x:+.2f},{driver_input.left_y:+.2f}) "
-            f"右摇杆=({driver_input.right_x:+.2f},{driver_input.right_y:+.2f}) "
-            f"驱动[{_drive_summary(hardware, motors)}] "
-            f"转向[{_steer_summary(hardware, motors)}]",
-            end="",
-            flush=True,
+        frame = build_telemetry_frame(
+            loop_index=loop_index,
+            mode_name=MODE_NAMES.get(state.mode, str(state.mode)),
+            input_source=source_name(),
+            steering_locked=state.steering_locked,
+            drive_direction_name=DIRECTION_NAMES.get(state.drive_direction_mode, str(state.drive_direction_mode)),
+            emergency_stop=driver_input.emergency_stop_button,
+            driver_input=driver_input,
+            drive_summary=_drive_summary(hardware, motors),
+            steer_summary=_steer_summary(hardware, motors),
         )
+        if writer is not None:
+            writer.write(frame)
+        if dashboard:
+            console.render(frame)
+        else:
+            console.render_plain(frame)
+
+    observe.console = console  # type: ignore[attr-defined]
+    observe.writer = writer  # type: ignore[attr-defined]
 
     return observe
 
@@ -129,6 +141,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-config", default="configs/input.json")
     parser.add_argument("--network-config", default="configs/network.json")
     parser.add_argument("--list-gamepads", action="store_true", help="list detected gamepads and exit")
+    parser.add_argument("--log-file", default="", help="write telemetry jsonl to this file")
+    parser.add_argument("--no-color", action="store_true", help="disable colored telemetry output")
+    parser.add_argument("--plain-telemetry", action="store_true", help="use single-line telemetry instead of dashboard")
     parser.add_argument(
         "--max-loops",
         type=int,
@@ -202,7 +217,15 @@ def main() -> int:
 
     observer = None
     if args.telemetry or (args.mock and args.input == "gamepad"):
-        observer = build_telemetry_observer(hardware, control, source_name_provider)
+        dashboard = sys.stdout.isatty() and not args.plain_telemetry
+        observer = build_telemetry_observer(
+            hardware,
+            control,
+            source_name_provider,
+            log_file=args.log_file or None,
+            dashboard=dashboard,
+            use_color=sys.stdout.isatty() and not args.no_color,
+        )
 
     try:
         controller.run(input_provider, max_loops=max_loops, observer=observer)
@@ -211,6 +234,13 @@ def main() -> int:
     finally:
         for close in closeables:
             close()
+        if observer is not None:
+            console = getattr(observer, "console", None)
+            writer = getattr(observer, "writer", None)
+            if hasattr(console, "finish"):
+                console.finish()
+            if hasattr(writer, "close"):
+                writer.close()
 
     if isinstance(motors, MockMotorClient):
         print("commands:")

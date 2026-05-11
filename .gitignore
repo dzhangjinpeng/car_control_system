@@ -16,3 +16,4 @@ dist/
 
 car_control_system_package.zip
 *.zip
+logs/

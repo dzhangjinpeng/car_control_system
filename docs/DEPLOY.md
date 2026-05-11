@@ -76,6 +76,7 @@ bash scripts/deploy.sh --run --input hybrid --telemetry
 - `--control-profile conservative|normal|sport`
 - `--max-loops N`
 - `--telemetry`
+- `--log-file path`：把遥测记录成 JSONL 文件
 
 示例：
 
@@ -125,6 +126,7 @@ python3 scripts/calibrate_hardware.py --probe
 python3 scripts/calibrate_hardware.py --verify
 python3 scripts/calibrate_hardware.py --calibrate-drive --write-config configs/hardware.local.json
 python3 scripts/calibrate_hardware.py --calibrate-steer --save-flash
+python3 scripts/calibrate_hardware.py --all --save-flash --report-file logs/calibration.json
 ```
 
 说明：
@@ -134,3 +136,4 @@ python3 scripts/calibrate_hardware.py --calibrate-steer --save-flash
 - `--calibrate-steer` 会把当前摆正位置写成零点
 - `--write-config` 只保存驱动反向列表，不会乱改电机 ID 映射
 - `--save-flash` 会把零点保存到电机 flash
+- `--report-file` 会把整次校准过程保存成 JSON 报告
