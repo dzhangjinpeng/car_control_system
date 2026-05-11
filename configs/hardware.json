@@ -1,0 +1,26 @@
+{
+  "serial_number": "14AA044B241402B10DDBDAFE448040BB",
+  "nom_baud": 1000000,
+  "dat_baud": 5000000,
+  "bridge_library": "bridge/cpp/build/libdm_bridge.so",
+  "motor_ids": [1, 2, 3, 4, 5, 6, 7, 8],
+  "drive_motor_ids": [1, 2, 3, 4],
+  "steer_motor_ids": [5, 6, 7, 8],
+  "inverted_drive_motor_ids": [2, 3],
+  "gear_ratio": 3.0,
+  "wheel_radius": 0.0855,
+  "wheelbase": 0.5,
+  "track_width": 0.4,
+  "drive_motor_roles": {
+    "rear_right": 1,
+    "rear_left": 2,
+    "front_left": 3,
+    "front_right": 4
+  },
+  "steer_motor_roles": {
+    "rear_left": 5,
+    "front_left": 6,
+    "front_right": 7,
+    "rear_right": 8
+  }
+}

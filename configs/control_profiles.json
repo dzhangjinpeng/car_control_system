@@ -1,0 +1,53 @@
+{
+  "conservative": {
+    "max_linear_speed": 0.35,
+    "throttle_smoothing_alpha": 0.12,
+    "steering_smoothing_alpha": 0.16,
+    "throttle_curve_power": 1.35,
+    "steering_curve_power": 1.6,
+    "drive_speed_ramp_mps_per_s": 2.0,
+    "mode1": {
+      "turn_speed_min_scale": 0.7,
+      "turn_speed_curve_power": 1.8
+    },
+    "mode2": {
+      "speed_scale": 0.2,
+      "turn_speed_min_scale": 0.82,
+      "turn_speed_curve_power": 1.5
+    }
+  },
+  "normal": {
+    "max_linear_speed": 0.5,
+    "throttle_smoothing_alpha": 0.18,
+    "steering_smoothing_alpha": 0.22,
+    "throttle_curve_power": 1.2,
+    "steering_curve_power": 1.4,
+    "drive_speed_ramp_mps_per_s": 3.0,
+    "mode1": {
+      "turn_speed_min_scale": 0.6,
+      "turn_speed_curve_power": 1.5
+    },
+    "mode2": {
+      "speed_scale": 0.25,
+      "turn_speed_min_scale": 0.75,
+      "turn_speed_curve_power": 1.2
+    }
+  },
+  "sport": {
+    "max_linear_speed": 0.7,
+    "throttle_smoothing_alpha": 0.28,
+    "steering_smoothing_alpha": 0.3,
+    "throttle_curve_power": 1.0,
+    "steering_curve_power": 1.2,
+    "drive_speed_ramp_mps_per_s": 5.0,
+    "mode1": {
+      "turn_speed_min_scale": 0.45,
+      "turn_speed_curve_power": 1.2
+    },
+    "mode2": {
+      "speed_scale": 0.35,
+      "turn_speed_min_scale": 0.65,
+      "turn_speed_curve_power": 1.0
+    }
+  }
+}
