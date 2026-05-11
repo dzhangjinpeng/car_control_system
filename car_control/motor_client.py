@@ -35,6 +35,12 @@ class MotorClient(Protocol):
     def get_tau(self, motor_id: int) -> float:
         ...
 
+    def set_zero_position(self, motor_id: int) -> None:
+        ...
+
+    def save_motor_param(self, motor_id: int) -> None:
+        ...
+
 
 @dataclass
 class MockMotorClient:
@@ -77,6 +83,12 @@ class MockMotorClient:
 
     def get_tau(self, motor_id: int) -> float:
         return self.torques.get(motor_id, 0.0)
+
+    def set_zero_position(self, motor_id: int) -> None:
+        self.commands.append(f"set_zero:{motor_id}")
+
+    def save_motor_param(self, motor_id: int) -> None:
+        self.commands.append(f"save_param:{motor_id}")
 
 
 class CxxMotorClient:
@@ -134,6 +146,12 @@ class CxxMotorClient:
     def get_tau(self, motor_id: int) -> float:
         return self._read_float("dm_bridge_get_tau", motor_id)
 
+    def set_zero_position(self, motor_id: int) -> None:
+        self._call("dm_bridge_set_zero_position", ctypes.c_uint16(motor_id))
+
+    def save_motor_param(self, motor_id: int) -> None:
+        self._call("dm_bridge_save_motor_param", ctypes.c_uint16(motor_id))
+
     def _call(self, name: str, *args: object) -> None:
         if self._lib is None or self._handle is None:
             raise RuntimeError("motor client is not open")
@@ -181,6 +199,11 @@ class CxxMotorClient:
         for name in ["dm_bridge_get_position", "dm_bridge_get_velocity", "dm_bridge_get_tau"]:
             fn = getattr(lib, name)
             fn.argtypes = [ctypes.c_void_p, ctypes.c_uint16, ctypes.POINTER(ctypes.c_float)]
+            fn.restype = ctypes.c_int
+
+        for name in ["dm_bridge_set_zero_position", "dm_bridge_save_motor_param"]:
+            fn = getattr(lib, name)
+            fn.argtypes = [ctypes.c_void_p, ctypes.c_uint16]
             fn.restype = ctypes.c_int
 
         lib.dm_bridge_last_error.argtypes = []

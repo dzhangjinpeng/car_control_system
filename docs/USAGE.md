@@ -127,3 +127,20 @@ python remote_control_sender.py --list-gamepads
 3. 在电脑上启动 `remote_control_sender.py`
 4. 先试前进、后退、转向
 5. 再试断开电脑发送，看板子是否回到本地手柄
+
+## 硬件校准
+
+如果你怀疑电机方向、零点或者角色映射有问题，先跑：
+
+```bash
+python3 scripts/calibrate_hardware.py --all --save-flash
+```
+
+它会：
+
+- 打印每个电机的实时回显
+- 点动驱动轮，让你确认正反
+- 把转向轮当前摆正位置写成零点
+- 需要的话还能写出 `configs/hardware.local.json`
+
+这比直接改控制逻辑更稳。

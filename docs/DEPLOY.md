@@ -108,4 +108,27 @@ bash scripts/deploy.sh --run --mock --input demo --max-loops 5
 - `scripts/run_hardware.sh`：板子真机运行
 - `scripts/deploy.sh`：板子上一键部署
 - `scripts/deploy.ps1`：Windows 远程部署
+- `scripts/calibrate_hardware.py`：硬件校准向导，检查电机回显、校准驱动方向、写转向零点
 
+## 硬件校准向导
+
+先做一次安全校准，特别是新车、改线、换电机后。
+
+```bash
+python3 scripts/calibrate_hardware.py --all --save-flash
+```
+
+常用组合：
+
+```bash
+python3 scripts/calibrate_hardware.py --probe
+python3 scripts/calibrate_hardware.py --calibrate-drive --write-config configs/hardware.local.json
+python3 scripts/calibrate_hardware.py --calibrate-steer --save-flash
+```
+
+说明：
+
+- `--calibrate-drive` 会逐个点动驱动轮，让你确认正反
+- `--calibrate-steer` 会把当前摆正位置写成零点
+- `--write-config` 只保存驱动反向列表，不会乱改电机 ID 映射
+- `--save-flash` 会把零点保存到电机 flash
