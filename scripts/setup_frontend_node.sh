@@ -28,11 +28,17 @@ if [[ "${EUID}" -eq 0 ]]; then
   apt-get update
   apt-get install -y ca-certificates curl gnupg
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  # Ubuntu 自带的 libnode-dev/nodejs-doc 可能和 NodeSource 的 nodejs 文件冲突。
+  apt-get remove -y libnode-dev nodejs-doc || true
+  apt-get install -f -y
   apt-get install -y nodejs
 else
   sudo apt-get update
   sudo apt-get install -y ca-certificates curl gnupg
   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  # Ubuntu 自带的 libnode-dev/nodejs-doc 可能和 NodeSource 的 nodejs 文件冲突。
+  sudo apt-get remove -y libnode-dev nodejs-doc || true
+  sudo apt-get install -f -y
   sudo apt-get install -y nodejs
 fi
 
