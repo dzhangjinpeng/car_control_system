@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import Layout from './components/Layout';
 import Calibration from './pages/Calibration';
+import ConfigCheck from './pages/ConfigCheck';
 import Dashboard from './pages/Dashboard';
 import History from './pages/History';
 import type { AppPage } from './types';
@@ -12,6 +13,9 @@ function App() {
   const content = useMemo(() => {
     if (page === 'calibration') {
       return <Calibration />;
+    }
+    if (page === 'config') {
+      return <ConfigCheck />;
     }
     if (page === 'history') {
       return <History />;

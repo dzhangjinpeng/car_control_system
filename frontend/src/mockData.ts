@@ -1,4 +1,4 @@
-import type { CalibrationReport, HealthData, TelemetryFrame } from './types';
+import type { CalibrationReport, ControlConfig, HardwareConfig, HealthData, NetworkConfig, TelemetryFrame } from './types';
 
 export const mockTelemetryFrame: TelemetryFrame = {
   schema_version: 1,
@@ -76,4 +76,66 @@ export const mockCalibrationReport: CalibrationReport = {
   result_inverted_drive_motor_ids: [],
   save_flash: true,
   notes: ['模拟报告仅用于前端展示，真实校准结果来自后端报告文件。'],
+};
+
+export const mockHardwareConfig: HardwareConfig = {
+  serial_number: '14AA044B241402B10DDBDAFE448040BB',
+  nom_baud: 1000000,
+  dat_baud: 5000000,
+  bridge_library: 'bridge/cpp/build/libdm_bridge.so',
+  motor_ids: [1, 2, 3, 4, 5, 6, 7, 8],
+  drive_motor_ids: [1, 2, 3, 4],
+  steer_motor_ids: [5, 6, 7, 8],
+  inverted_drive_motor_ids: [2, 3],
+  gear_ratio: 3,
+  wheel_radius: 0.0855,
+  wheelbase: 0.62,
+  track_width: 0.486,
+  drive_motor_roles: {
+    front_left: 3,
+    front_right: 4,
+    rear_left: 2,
+    rear_right: 1,
+  },
+  steer_motor_roles: {
+    front_left: 6,
+    front_right: 7,
+    rear_left: 5,
+    rear_right: 8,
+  },
+};
+
+export const mockControlConfig: ControlConfig = {
+  max_linear_speed: 0.5,
+  motor_speed_limit: 2.5,
+  deadzone: 0.05,
+  throttle_smoothing_alpha: 0.18,
+  steering_smoothing_alpha: 0.22,
+  throttle_curve_power: 1.2,
+  steering_curve_power: 1.4,
+  drive_speed_ramp_mps_per_s: 3,
+  telemetry_interval_s: 0.1,
+  loop_period_s: 0.002,
+  mode1: {
+    steering_model: 'front_ackermann',
+    steering_axis: 'left_x',
+    max_inner_steering_degrees: 35,
+    enable_speed_compensation: true,
+    turn_speed_min_scale: 0.6,
+    turn_speed_curve_power: 1.5,
+  },
+  mode2: {
+    speed_scale: 0.25,
+    max_inner_steering_degrees: 15,
+    enable_speed_compensation: true,
+    turn_speed_min_scale: 0.75,
+    turn_speed_curve_power: 1.2,
+  },
+};
+
+export const mockNetworkConfig: NetworkConfig = {
+  bind_host: '0.0.0.0',
+  port: 23333,
+  timeout_s: 0.2,
+  poll_timeout_s: 0,
 };

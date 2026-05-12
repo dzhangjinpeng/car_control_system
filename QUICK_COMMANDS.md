@@ -55,6 +55,26 @@ python3 scripts/inspect_gamepad.py
 - 看哪个 `axis` 或 `button` 变化。
 - 如果右摇杆一直是 `-1`，通常是 `right_x_axis` 读到了扳机轴。
 
+## 6.1 交互式配置手柄映射
+
+如果不想手动看 axis/button 编号，可以运行向导：
+
+```bash
+python3 scripts/configure_gamepad.py
+```
+
+它会依次提示你推左摇杆、右摇杆和按几个关键按钮，然后自动写入：
+
+```text
+configs/input.json
+```
+
+写完后验证：
+
+```bash
+python3 car_control_system.py --mock --input gamepad --gamepad-index 0 --telemetry
+```
+
 ## 7. 修改手柄映射
 
 ```bash
@@ -116,6 +136,26 @@ python3 car_control_system.py --mock --input gamepad --gamepad-index 0 --telemet
 
 ```bash
 python3 scripts/calibrate_hardware.py --verify --verify-steer-zero --report-file logs/calibration.json
+```
+
+## 10.1 一键现场诊断
+
+默认只做软件环境、手柄和 mock 检查，不碰真实电机：
+
+```bash
+bash scripts/onsite_check.sh
+```
+
+如果已经确认 CANFD、电机供电、急停和安全支架都准备好了，再加硬件检查：
+
+```bash
+bash scripts/onsite_check.sh --hardware
+```
+
+日志会保存到：
+
+```text
+onsite_logs/
 ```
 
 ## 11. 真机本地手柄控制

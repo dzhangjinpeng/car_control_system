@@ -1,5 +1,20 @@
-import type { ApiResponse, CalibrationReport, HealthData, TelemetryFrame } from './types';
-import { mockCalibrationReport, mockHealthData, mockTelemetryFrame } from './mockData';
+import type {
+  ApiResponse,
+  CalibrationReport,
+  ControlConfig,
+  HardwareConfig,
+  HealthData,
+  NetworkConfig,
+  TelemetryFrame,
+} from './types';
+import {
+  mockCalibrationReport,
+  mockControlConfig,
+  mockHardwareConfig,
+  mockHealthData,
+  mockNetworkConfig,
+  mockTelemetryFrame,
+} from './mockData';
 
 let isMockMode = true;
 
@@ -56,4 +71,7 @@ export const api = {
     fetchApi<TelemetryFrame[]>(`/telemetry/history?limit=${limit}`, [mockTelemetryFrame]),
   getCalibrationLatest: () =>
     fetchApi<CalibrationReport>('/calibration/latest', mockCalibrationReport),
+  getHardwareConfig: () => fetchApi<HardwareConfig>('/config/hardware', mockHardwareConfig),
+  getControlConfig: () => fetchApi<ControlConfig>('/config/control', mockControlConfig),
+  getNetworkConfig: () => fetchApi<NetworkConfig>('/config/network', mockNetworkConfig),
 };

@@ -11,6 +11,7 @@ interface LayoutProps {
 
 const navItems: Array<{ page: AppPage; label: string }> = [
   { page: 'dashboard', label: '总览' },
+  { page: 'config', label: '配置' },
   { page: 'calibration', label: '校准' },
   { page: 'history', label: '历史' },
 ];

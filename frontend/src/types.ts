@@ -78,4 +78,60 @@ export interface CalibrationReport {
   notes?: string[];
 }
 
-export type AppPage = 'dashboard' | 'calibration' | 'history';
+export interface HardwareConfig {
+  serial_number: string;
+  nom_baud: number;
+  dat_baud: number;
+  bridge_library: string;
+  motor_ids: number[];
+  drive_motor_ids: number[];
+  steer_motor_ids: number[];
+  inverted_drive_motor_ids: number[];
+  gear_ratio: number;
+  wheel_radius: number;
+  wheelbase: number;
+  track_width: number;
+  drive_motor_roles: Record<string, number>;
+  steer_motor_roles: Record<string, number>;
+}
+
+export interface Mode1Config {
+  steering_model: string;
+  steering_axis: string;
+  max_inner_steering_degrees: number;
+  enable_speed_compensation: boolean;
+  turn_speed_min_scale: number;
+  turn_speed_curve_power: number;
+}
+
+export interface Mode2Config {
+  speed_scale: number;
+  max_inner_steering_degrees: number;
+  enable_speed_compensation: boolean;
+  turn_speed_min_scale: number;
+  turn_speed_curve_power: number;
+}
+
+export interface ControlConfig {
+  max_linear_speed: number;
+  motor_speed_limit: number;
+  deadzone: number;
+  throttle_smoothing_alpha: number;
+  steering_smoothing_alpha: number;
+  throttle_curve_power: number;
+  steering_curve_power: number;
+  drive_speed_ramp_mps_per_s: number;
+  telemetry_interval_s: number;
+  loop_period_s: number;
+  mode1: Mode1Config;
+  mode2: Mode2Config;
+}
+
+export interface NetworkConfig {
+  bind_host: string;
+  port: number;
+  timeout_s: number;
+  poll_timeout_s: number;
+}
+
+export type AppPage = 'dashboard' | 'calibration' | 'history' | 'config';
