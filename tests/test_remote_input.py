@@ -67,6 +67,8 @@ class RemoteInputTest(unittest.TestCase):
         self.assertTrue(result.steering_lock_button)
         self.assertTrue(result.drive_direction_button)
         self.assertEqual(hybrid.last_source_label, "远程接管")
+        self.assertEqual(hybrid.link_state(), "远程接管")
+        self.assertEqual(hybrid.remote_snapshot(), (1, 0.05, False))
 
     def test_hybrid_falls_back_to_local_when_remote_stale(self) -> None:
         packet = RemoteControlPacket(
@@ -81,6 +83,8 @@ class RemoteInputTest(unittest.TestCase):
 
         self.assertAlmostEqual(result.left_y, 0.5)
         self.assertEqual(hybrid.last_source_label, "本地手柄")
+        self.assertEqual(hybrid.link_state(), "远程超时回退")
+        self.assertEqual(hybrid.remote_snapshot(), (1, 1.0, True))
 
     def test_hybrid_local_emergency_stop_wins(self) -> None:
         packet = RemoteControlPacket(

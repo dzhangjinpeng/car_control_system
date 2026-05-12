@@ -19,6 +19,10 @@ class TelemetryTest(unittest.TestCase):
             loop_index=12,
             mode_name="mode1",
             input_source="本地手柄",
+            input_link_state="本地在线",
+            remote_seq=7,
+            remote_latency_s=0.012,
+            remote_stale=False,
             steering_locked=True,
             drive_direction_name="自动",
             emergency_stop=False,
@@ -44,6 +48,11 @@ class TelemetryTest(unittest.TestCase):
 
         self.assertEqual(payload["loop_index"], 12)
         self.assertEqual(payload["mode_name"], "mode1")
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["input_link_state"], "本地在线")
+        self.assertEqual(payload["remote_seq"], 7)
+        self.assertAlmostEqual(payload["remote_latency_s"], 0.012)
+        self.assertFalse(payload["remote_stale"])
         self.assertEqual(payload["driver_input"]["left_x"], 0.1)
         self.assertEqual(payload["drive_motors"][0]["role"], "rear_right")
         self.assertEqual(payload["steer_motors"][0]["error"], 0.5)
@@ -54,6 +63,10 @@ class TelemetryTest(unittest.TestCase):
             loop_index=1,
             mode_name="mode2",
             input_source="远程",
+            input_link_state="远程接管",
+            remote_seq=99,
+            remote_latency_s=0.045,
+            remote_stale=False,
             steering_locked=False,
             drive_direction_name="只前进",
             emergency_stop=True,

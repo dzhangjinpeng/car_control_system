@@ -9,6 +9,8 @@
 - [远程控制](docs/REMOTE_CONTROL.md)
 - [调参表](docs/TUNING.md)
 - [后端接口](docs/BACKEND_INTERFACE.md)
+- [前端 API](docs/FRONTEND_API.md)
+- [诊断前端](frontend/README.md)
 
 ## 主入口
 

@@ -13,6 +13,7 @@ void set_error(const std::string& message) {
 }
 
 struct BridgeContext {
+    // 保存电机初始化参数和控制对象，整个桥接生命周期都复用这一份上下文。
     std::vector<damiao::DmActData> init_data;
     std::shared_ptr<damiao::Motor_Control> control;
 };
@@ -36,6 +37,7 @@ void* dm_bridge_open(const char* serial, uint32_t nom_baud, uint32_t dat_baud) {
         }
 
         auto* ctx = new BridgeContext();
+        // 前四个 ID 走速度模式，后四个 ID 走位置+速度模式，对应车体驱动和转向两组电机。
         const uint16_t motor_ids[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
         const uint16_t master_ids[] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
 
@@ -59,6 +61,7 @@ void* dm_bridge_open(const char* serial, uint32_t nom_baud, uint32_t dat_baud) {
         ctx->control = std::make_shared<damiao::Motor_Control>(
             nom_baud, dat_baud, std::string(serial), &ctx->init_data);
 
+        // 转向电机默认切到位置速度模式，便于后面的 Ackermann 转向控制。
         for (int i = 4; i < 8; ++i) {
             auto motor = ctx->control->getMotor(motor_ids[i]);
             if (motor) {
@@ -66,6 +69,7 @@ void* dm_bridge_open(const char* serial, uint32_t nom_baud, uint32_t dat_baud) {
             }
         }
 
+        // 发送一次初始化命令，确保电机状态和控制模式同步。
         for (int i = 0; i < 8; ++i) {
             uint16_t offset = (motor_ids[i] <= 0x04) ? damiao::VEL_MODE : damiao::POS_VEL_MODE;
             ctx->control->control_cmd(motor_ids[i] + offset, 0xFC);

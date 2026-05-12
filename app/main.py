@@ -14,12 +14,13 @@ from car_control.config import (
     load_hardware_config,
     load_network_config,
 )
+from car_control.api_server import FrontendApiServer
 from car_control.controller import CarController
 from car_control.gamepad_input import PygameGamepadInput, describe_gamepads
 from car_control.keyboard_input import ScriptedInput, neutral_input
 from car_control.motor_client import CxxMotorClient, MockMotorClient, MotorClient
 from car_control.network_input import HybridInputSource, UdpRemoteInput
-from car_control.telemetry import MotorTelemetry, TelemetryConsole, TelemetryJsonlWriter, build_telemetry_frame
+from car_control.telemetry import MotorTelemetry, TelemetryConsole, TelemetryJsonlWriter, TelemetryStore, build_telemetry_frame
 from car_control.state import (
     DRIVE_DIRECTION_AUTO,
     DRIVE_DIRECTION_FORWARD_ONLY,
@@ -116,14 +117,20 @@ def build_telemetry_observer(
     hardware: HardwareConfig,
     control: ControlConfig,
     source_name: Callable[[], str],
+    link_state: Callable[[], str] | None = None,
+    remote_snapshot: Callable[[], tuple[int | None, float | None, bool | None]] | None = None,
+    store: TelemetryStore | None = None,
     log_file: str | None = None,
     dashboard: bool = True,
+    render_console: bool = True,
     use_color: bool | None = None,
 ):
     # 按固定间隔刷新面板，避免主循环 500Hz 时刷屏。
     last_print = 0.0
     console = TelemetryConsole(use_color=use_color)
     writer = TelemetryJsonlWriter(log_file) if log_file else None
+    link_state_provider = link_state or (lambda: "本地")
+    remote_snapshot_provider = remote_snapshot or (lambda: (None, None, None))
 
     def observe(loop_index: int, driver_input: DriverInput, state: ControlState, motors: MotorClient) -> None:
         nonlocal last_print
@@ -134,10 +141,15 @@ def build_telemetry_observer(
 
         drive_summary, drive_motors = _drive_telemetry(hardware, motors)
         steer_summary, steer_motors = _steer_telemetry(hardware, motors)
+        remote_seq, remote_latency_s, remote_stale = remote_snapshot_provider()
         frame = build_telemetry_frame(
             loop_index=loop_index,
             mode_name=MODE_NAMES.get(state.mode, str(state.mode)),
             input_source=source_name(),
+            input_link_state=link_state_provider(),
+            remote_seq=remote_seq,
+            remote_latency_s=remote_latency_s,
+            remote_stale=remote_stale,
             steering_locked=state.steering_locked,
             drive_direction_name=DIRECTION_NAMES.get(state.drive_direction_mode, str(state.drive_direction_mode)),
             emergency_stop=driver_input.emergency_stop_button,
@@ -147,12 +159,15 @@ def build_telemetry_observer(
             drive_motors=drive_motors,
             steer_motors=steer_motors,
         )
+        if store is not None:
+            store.update(frame)
         if writer is not None:
             writer.write(frame)
-        if dashboard:
-            console.render(frame)
-        else:
-            console.render_plain(frame)
+        if render_console:
+            if dashboard:
+                console.render(frame)
+            else:
+                console.render_plain(frame)
 
     observe.console = console  # type: ignore[attr-defined]
     observe.writer = writer  # type: ignore[attr-defined]
@@ -174,6 +189,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--log-file", default="", help="write telemetry jsonl to this file")
     parser.add_argument("--no-color", action="store_true", help="disable colored telemetry output")
     parser.add_argument("--plain-telemetry", action="store_true", help="use single-line telemetry instead of dashboard")
+    parser.add_argument("--api", action="store_true", help="start read-only HTTP API for frontend")
+    parser.add_argument("--api-host", default="127.0.0.1", help="frontend API bind host")
+    parser.add_argument("--api-port", type=int, default=8765, help="frontend API port")
+    parser.add_argument("--api-history-size", type=int, default=200, help="frontend API history buffer size")
+    parser.add_argument("--calibration-report", default="logs/calibration.json", help="calibration report path for API")
     parser.add_argument(
         "--max-loops",
         type=int,
@@ -194,11 +214,16 @@ def main() -> int:
 
     hardware = load_hardware_config(args.hardware_config)
     control = load_control_config(args.control_config, profile_name=args.control_profile)
+    network_config = load_network_config(args.network_config)
     motors = build_motor_client(args, hardware)
     controller = CarController(hardware, control, motors)
 
     closeables: list[Callable[[], None]] = []
+    api_server: FrontendApiServer | None = None
+    telemetry_store = TelemetryStore(args.api_history_size) if args.api else None
     source_name_provider: Callable[[], str] = lambda: "脚本"
+    link_state_provider: Callable[[], str] = lambda: "本地"
+    remote_snapshot_provider: Callable[[], tuple[int | None, float | None, bool | None]] = lambda: (None, None, None)
 
     if args.input == "gamepad":
         gamepad_config = load_gamepad_config(args.input_config)
@@ -207,16 +232,17 @@ def main() -> int:
         closeables.append(input_reader.close)
         input_provider = input_reader.poll
         source_name_provider = lambda: "本地手柄"
+        link_state_provider = lambda: "本地在线"
     elif args.input == "remote":
-        network_config = load_network_config(args.network_config)
         remote_reader = UdpRemoteInput(network_config)
         remote_reader.open()
         closeables.append(remote_reader.close)
         input_provider = remote_reader.poll
         source_name_provider = lambda: remote_reader.last_source_label
+        link_state_provider = remote_reader.link_state
+        remote_snapshot_provider = remote_reader.remote_snapshot
     elif args.input == "hybrid":
         gamepad_config = load_gamepad_config(args.input_config)
-        network_config = load_network_config(args.network_config)
         local_reader = PygameGamepadInput(gamepad_config, args.gamepad_index)
         remote_reader = UdpRemoteInput(network_config)
         local_reader.open()
@@ -230,12 +256,26 @@ def main() -> int:
             return hybrid.last_source_label
 
         source_name_provider = hybrid_source_name
+        link_state_provider = hybrid.link_state
+        remote_snapshot_provider = hybrid.remote_snapshot
     else:
         input_provider = build_demo_input_provider(args)
         if args.input == "neutral":
             source_name_provider = lambda: "空闲"
         else:
             source_name_provider = lambda: "脚本"
+        link_state_provider = lambda: "本地"
+
+    if args.api:
+        api_server = FrontendApiServer(
+            args.api_host,
+            args.api_port,
+            telemetry_store=telemetry_store or TelemetryStore(args.api_history_size),
+            hardware=hardware,
+            control=control,
+            network=network_config,
+            calibration_report_path=args.calibration_report,
+        )
 
     # 手柄模式默认持续运行，脚本输入默认短跑，方便本地快速检查。
     if args.max_loops is None:
@@ -246,22 +286,32 @@ def main() -> int:
         max_loops = args.max_loops
 
     observer = None
-    if args.telemetry or (args.mock and args.input == "gamepad"):
+    if args.telemetry or args.api or (args.mock and args.input == "gamepad"):
         dashboard = sys.stdout.isatty() and not args.plain_telemetry
         observer = build_telemetry_observer(
             hardware,
             control,
             source_name_provider,
+            link_state_provider,
+            remote_snapshot_provider,
+            store=telemetry_store,
             log_file=args.log_file or None,
             dashboard=dashboard,
+            render_console=args.telemetry,
             use_color=sys.stdout.isatty() and not args.no_color,
         )
+        if api_server is not None:
+            api_server.start()
+        if args.api:
+            print(f"frontend api: {api_server.url if api_server is not None else 'n/a'}")
 
     try:
         controller.run(input_provider, max_loops=max_loops, observer=observer)
         if observer is not None:
             print()
     finally:
+        if api_server is not None:
+            api_server.close()
         for close in closeables:
             close()
         if observer is not None:

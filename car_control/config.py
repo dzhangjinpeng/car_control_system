@@ -242,3 +242,57 @@ def load_network_config(path: str | Path = "configs/network.json") -> NetworkCon
     # 加载远程控制的 UDP 配置。
     data = _load_json(path)
     return NetworkConfig(**data)
+
+
+def validate_hardware_config(hardware: HardwareConfig) -> list[str]:
+    # 只检查配置本身是否自洽，不依赖现场硬件。
+    issues: list[str] = []
+    all_ids = set(hardware.motor_ids)
+    if len(all_ids) != len(hardware.motor_ids):
+        issues.append("motor_ids 有重复")
+    if not set(hardware.drive_motor_ids).issubset(all_ids):
+        issues.append("drive_motor_ids 不是 motor_ids 的子集")
+    if not set(hardware.steer_motor_ids).issubset(all_ids):
+        issues.append("steer_motor_ids 不是 motor_ids 的子集")
+    if set(hardware.drive_motor_ids) & set(hardware.steer_motor_ids):
+        issues.append("drive_motor_ids 和 steer_motor_ids 有重叠")
+    if not set(hardware.inverted_drive_motor_ids).issubset(set(hardware.drive_motor_ids)):
+        issues.append("inverted_drive_motor_ids 不是 drive_motor_ids 的子集")
+    if hardware.gear_ratio <= 0:
+        issues.append("gear_ratio 必须大于 0")
+    if hardware.wheel_radius <= 0:
+        issues.append("wheel_radius 必须大于 0")
+    if hardware.wheelbase <= 0:
+        issues.append("wheelbase 必须大于 0")
+    if hardware.track_width <= 0:
+        issues.append("track_width 必须大于 0")
+    if len(hardware.drive_motor_roles) != 4:
+        issues.append("drive_motor_roles 数量不是 4")
+    if len(hardware.steer_motor_roles) != 4:
+        issues.append("steer_motor_roles 数量不是 4")
+    role_ids = set(hardware.drive_motor_roles.values()) | set(hardware.steer_motor_roles.values())
+    if not role_ids.issubset(all_ids):
+        issues.append("角色映射里有未知电机 ID")
+    return issues
+
+
+def validate_control_config(control: ControlConfig) -> list[str]:
+    # 控制参数只做基础范围检查，避免极端值把控制逻辑拖飞。
+    issues: list[str] = []
+    if control.max_linear_speed <= 0:
+        issues.append("max_linear_speed 必须大于 0")
+    if control.motor_speed_limit <= 0:
+        issues.append("motor_speed_limit 必须大于 0")
+    if not 0.0 <= control.deadzone <= 1.0:
+        issues.append("deadzone 必须在 0 到 1 之间")
+    if control.loop_period_s <= 0:
+        issues.append("loop_period_s 必须大于 0")
+    if control.telemetry_interval_s <= 0:
+        issues.append("telemetry_interval_s 必须大于 0")
+    if control.drive_speed_ramp_mps_per_s <= 0:
+        issues.append("drive_speed_ramp_mps_per_s 必须大于 0")
+    if control.mode1.max_inner_steering_degrees <= 0:
+        issues.append("mode1.max_inner_steering_degrees 必须大于 0")
+    if control.mode2.max_inner_steering_degrees <= 0:
+        issues.append("mode2.max_inner_steering_degrees 必须大于 0")
+    return issues

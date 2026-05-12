@@ -7,7 +7,7 @@ from typing import Dict, List, Protocol
 
 
 class MotorClient(Protocol):
-    """Small contract used by the controller and mode logic."""
+    """控制器和模式层依赖的最小电机接口。"""
     def open(self) -> None:
         ...
 
@@ -124,6 +124,7 @@ class CxxMotorClient:
         # 延迟加载共享库，这样 mock 运行时不依赖本地原生组件。
         self._lib = ctypes.CDLL(str(self.library_path))
         self._bind_functions(self._lib)
+        # 通过序列号打开板子上的 USB-CANFD 设备，和原项目的硬件链路保持一致。
         handle = self._lib.dm_bridge_open(
             self.serial_number.encode("utf-8"),
             ctypes.c_uint32(self.nom_baud),
@@ -204,6 +205,7 @@ class CxxMotorClient:
 
     @staticmethod
     def _bind_functions(lib: ctypes.CDLL) -> None:
+        # 明确每个导出函数的参数和返回值，避免 ctypes 默认推断造成隐藏错误。
         lib.dm_bridge_open.argtypes = [ctypes.c_char_p, ctypes.c_uint32, ctypes.c_uint32]
         lib.dm_bridge_open.restype = ctypes.c_void_p
         lib.dm_bridge_close.argtypes = [ctypes.c_void_p]

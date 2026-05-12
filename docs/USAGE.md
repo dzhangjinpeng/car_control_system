@@ -112,6 +112,15 @@ python remote_control_sender.py --host 192.168.1.50 --input gamepad
 python3 car_control_system.py --list-gamepads
 ```
 
+查看每个摇杆和按键的原始编号：
+
+```bash
+python3 scripts/inspect_gamepad.py
+```
+
+如果你发现右摇杆一直是 `-1`，通常说明当前 `right_x_axis` 读到了扳机轴。
+这时用上面的检测脚本找出真正会跟随右摇杆左右变化的 `axis` 编号，再修改 `configs/input.json`。
+
 电脑端远程发送器也可以查看：
 
 ```powershell

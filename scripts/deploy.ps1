@@ -21,7 +21,22 @@ param(
 
     # 运行时选择控制挡位。
     [ValidateSet("conservative", "normal", "sport")]
-    [string]$ControlProfile = "normal"
+    [string]$ControlProfile = "normal",
+
+    # 是否在烟雾测试里一并启动前端只读 API。
+    [switch]$Api,
+
+    # 前端 API 绑定地址。
+    [string]$ApiHost = "127.0.0.1",
+
+    # 前端 API 端口。
+    [int]$ApiPort = 8765,
+
+    # 前端 API 历史缓冲长度。
+    [int]$ApiHistorySize = 200,
+
+    # 校准报告路径。
+    [string]$CalibrationReport = "logs/calibration.json"
 )
 
 $ErrorActionPreference = "Stop"
@@ -107,8 +122,12 @@ cd '$remoteBridgeDir' && cmake -S . -B build && cmake --build build -j\$(nproc)
     }
 
     if ($SmokeTest) {
+        $apiArgs = ""
+        if ($Api) {
+            $apiArgs = " --api --api-host $ApiHost --api-port $ApiPort --api-history-size $ApiHistorySize --calibration-report $CalibrationReport"
+        }
         $smokeCommand = @"
-cd '$remoteProjectRoot' && $RemotePython car_control_system.py --mock --input demo --control-profile $ControlProfile --max-loops 3
+cd '$remoteProjectRoot' && $RemotePython car_control_system.py --mock --input demo --control-profile $ControlProfile --max-loops 3$apiArgs
 "@
         & ssh "$User@$Host" $smokeCommand
     }
