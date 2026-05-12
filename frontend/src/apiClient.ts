@@ -20,7 +20,25 @@ async function fetchApi<T>(endpoint: string, mockData: T): Promise<ApiResponse<T
 
   try {
     const response = await fetch(`${API_BASE}${endpoint}`);
-    const data = (await response.json()) as ApiResponse<T>;
+    const rawBody = await response.text();
+    if (!rawBody.trim()) {
+      return {
+        ok: false,
+        error: `接口没有返回数据：${API_BASE}${endpoint}。请确认后端已启动，并且前端已切到正确的后端地址。`,
+      };
+    }
+
+    let data: ApiResponse<T>;
+    try {
+      data = JSON.parse(rawBody) as ApiResponse<T>;
+    } catch {
+      const preview = rawBody.slice(0, 80).replace(/\s+/g, ' ');
+      return {
+        ok: false,
+        error: `接口返回的不是 JSON：HTTP ${response.status}，内容开头：${preview}`,
+      };
+    }
+
     if (!response.ok && data.error === undefined) {
       return { ok: false, error: `HTTP ${response.status}` };
     }
