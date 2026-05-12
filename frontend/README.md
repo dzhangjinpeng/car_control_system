@@ -4,6 +4,13 @@
 
 ## 本地启动
 
+前端需要 Node.js 20 或更高版本。开发板上如果 Node.js 太旧，先在项目根目录运行：
+
+```bash
+chmod +x scripts/setup_frontend_node.sh
+./scripts/setup_frontend_node.sh
+```
+
 先启动后端：
 
 ```bash

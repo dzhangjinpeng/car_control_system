@@ -162,7 +162,24 @@ http://127.0.0.1:5173/
 
 前端右上角切到 `真实后端`。
 
-## 14. 出问题时先复制这些输出
+## 14. 开发板升级 Node.js
+
+如果开发板上 `npm run dev` 报 `Unexpected token '.'` 这类语法错误，先升级 Node.js：
+
+```bash
+chmod +x scripts/setup_frontend_node.sh
+./scripts/setup_frontend_node.sh
+```
+
+升级完再进入前端目录：
+
+```bash
+cd frontend
+npm install
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+
+## 15. 出问题时先复制这些输出
 
 ```bash
 git status
