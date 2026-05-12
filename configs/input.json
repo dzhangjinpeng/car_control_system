@@ -1,9 +1,9 @@
 {
-  "auto_detect": true,
+  "auto_detect": false,
   "left_x_axis": 0,
   "left_y_axis": 1,
-  "right_x_axis": 2,
-  "right_y_axis": 3,
+  "right_x_axis": 3,
+  "right_y_axis": 4,
   "mode_button": 1,
   "steering_lock_button": 4,
   "drive_direction_button": 5,

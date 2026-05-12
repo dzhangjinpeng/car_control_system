@@ -76,6 +76,7 @@ nano configs/input.json
 常见要改的字段：
 
 ```json
+"auto_detect": false,
 "left_x_axis": 0,
 "left_y_axis": 1,
 "right_x_axis": 3,
