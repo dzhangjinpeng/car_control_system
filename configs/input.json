@@ -1,12 +1,23 @@
 {
+  "_comment": "手柄映射配置。程序会自动忽略所有以下划线开头的说明字段。",
+  "_auto_detect": "是否根据手柄名称自动猜轴编号。现场手柄映射已经手动调过，所以这里设为 false，避免自动覆盖。",
   "auto_detect": false,
+  "_left_x_axis": "左摇杆左右。常见：左=-1，右=+1。",
   "left_x_axis": 0,
+  "_left_y_axis": "左摇杆上下。常见：上=-1，下=+1。控制逻辑会按当前约定处理。",
   "left_y_axis": 1,
+  "_right_x_axis": "右摇杆左右。axis2/axis5 如果一直是 -1，通常是扳机，不要填它们。",
   "right_x_axis": 3,
+  "_right_y_axis": "右摇杆上下。当前按现场排查先使用 axis4。",
   "right_y_axis": 4,
+  "_mode_button": "切换 mode0/mode1/mode2 的按键编号。",
   "mode_button": 1,
+  "_steering_lock_button": "转向锁定按键编号。用于锁住当前转向输入。",
   "steering_lock_button": 4,
+  "_drive_direction_button": "前进/倒车方向切换按键编号。",
   "drive_direction_button": 5,
+  "_emergency_stop_button": "急停按键编号。按下后目标速度应立刻归零。",
   "emergency_stop_button": 6,
+  "_deadzone": "手柄死区。小于该值的轻微漂移视为 0。",
   "deadzone": 0.15
 }

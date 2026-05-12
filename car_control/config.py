@@ -161,7 +161,22 @@ def _resolve_project_path(path: str | Path) -> Path:
 
 def _load_json(path: str | Path) -> dict:
     # 同时兼容普通 UTF-8 和带 BOM 的 UTF-8。
-    return json.loads(_resolve_project_path(path).read_text(encoding="utf-8-sig"))
+    raw = json.loads(_resolve_project_path(path).read_text(encoding="utf-8-sig"))
+    return _strip_comment_keys(raw)
+
+
+def _strip_comment_keys(value: object) -> object:
+    # 允许 JSON 里写 _comment / _fields 这类说明字段，但加载时自动忽略。
+    if isinstance(value, dict):
+        cleaned: dict[object, object] = {}
+        for key, item in value.items():
+            if isinstance(key, str) and key.startswith("_"):
+                continue
+            cleaned[key] = _strip_comment_keys(item)
+        return cleaned
+    if isinstance(value, list):
+        return [_strip_comment_keys(item) for item in value]
+    return value
 
 
 def load_hardware_config(path: str | Path = "configs/hardware.json") -> HardwareConfig:

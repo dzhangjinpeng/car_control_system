@@ -61,6 +61,9 @@ python3 scripts/inspect_gamepad.py
 nano configs/input.json
 ```
 
+配置文件里以下划线开头的字段是中文说明，例如 `_right_x_axis`。  
+这些说明字段不会影响程序运行，可以保留。
+
 如果自动匹配覆盖了你的手动配置，把：
 
 ```json

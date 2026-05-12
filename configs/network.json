@@ -1,6 +1,11 @@
 {
+  "_comment": "远程控制网络配置。程序会自动忽略所有以下划线开头的说明字段。",
+  "_bind_host": "板子端 UDP 监听地址。0.0.0.0 表示监听所有网卡。",
   "bind_host": "0.0.0.0",
+  "_port": "远程输入 UDP 端口。电脑端 remote_control_sender.py 要发到这个端口。",
   "port": 23333,
+  "_timeout_s": "远程输入超时时间，单位秒。超过这个时间没收到包，就回退到本地手柄。",
   "timeout_s": 0.2,
+  "_poll_timeout_s": "UDP socket 轮询等待时间，单位秒。0 表示非阻塞。",
   "poll_timeout_s": 0.0
 }

@@ -1,52 +1,95 @@
 {
+  "_comment": "控制挡位配置。程序会自动忽略所有以下划线开头的说明字段。",
+  "_conservative": "保守挡位，适合初次上板和低速检查。",
   "conservative": {
+    "_max_linear_speed": "比 normal 更低的最大线速度。",
     "max_linear_speed": 0.35,
+    "_throttle_smoothing_alpha": "更平滑的油门响应。",
     "throttle_smoothing_alpha": 0.12,
+    "_steering_smoothing_alpha": "更平滑的转向响应。",
     "steering_smoothing_alpha": 0.16,
+    "_throttle_curve_power": "保守挡位的油门曲线更细腻。",
     "throttle_curve_power": 1.35,
+    "_steering_curve_power": "保守挡位的转向曲线更细腻。",
     "steering_curve_power": 1.6,
+    "_drive_speed_ramp_mps_per_s": "驱动加速度更小，起步更柔和。",
     "drive_speed_ramp_mps_per_s": 2.0,
+    "_mode1": "mode1 的保守参数。",
     "mode1": {
+      "_turn_speed_min_scale": "转向时保留更大的最低速度比例。",
       "turn_speed_min_scale": 0.7,
+      "_turn_speed_curve_power": "保守挡位下转向速度降幅更柔和。",
       "turn_speed_curve_power": 1.8
     },
+    "_mode2": "mode2 的保守参数。",
     "mode2": {
+      "_speed_scale": "mode2 更慢。",
       "speed_scale": 0.2,
+      "_turn_speed_min_scale": "mode2 的保守最低速度比例。",
       "turn_speed_min_scale": 0.82,
+      "_turn_speed_curve_power": "mode2 的保守转向曲线。",
       "turn_speed_curve_power": 1.5
     }
   },
+  "_normal": "正常挡位，日常调试默认使用。",
   "normal": {
+    "_max_linear_speed": "默认最大线速度。",
     "max_linear_speed": 0.5,
+    "_throttle_smoothing_alpha": "默认油门平滑系数。",
     "throttle_smoothing_alpha": 0.18,
+    "_steering_smoothing_alpha": "默认转向平滑系数。",
     "steering_smoothing_alpha": 0.22,
+    "_throttle_curve_power": "默认油门曲线。",
     "throttle_curve_power": 1.2,
+    "_steering_curve_power": "默认转向曲线。",
     "steering_curve_power": 1.4,
+    "_drive_speed_ramp_mps_per_s": "默认加速度限制。",
     "drive_speed_ramp_mps_per_s": 3.0,
+    "_mode1": "mode1 的默认参数。",
     "mode1": {
+      "_turn_speed_min_scale": "默认转向最低速度比例。",
       "turn_speed_min_scale": 0.6,
+      "_turn_speed_curve_power": "默认转向速度曲线。",
       "turn_speed_curve_power": 1.5
     },
+    "_mode2": "mode2 的默认参数。",
     "mode2": {
+      "_speed_scale": "默认安全模式速度缩放。",
       "speed_scale": 0.25,
+      "_turn_speed_min_scale": "默认安全模式最低速度比例。",
       "turn_speed_min_scale": 0.75,
+      "_turn_speed_curve_power": "默认安全模式曲线。",
       "turn_speed_curve_power": 1.2
     }
   },
+  "_sport": "运动挡位，更激进，不建议初次真车测试就开。",
   "sport": {
+    "_max_linear_speed": "更高的最大线速度。",
     "max_linear_speed": 0.7,
+    "_throttle_smoothing_alpha": "更快的油门响应。",
     "throttle_smoothing_alpha": 0.28,
+    "_steering_smoothing_alpha": "更快的转向响应。",
     "steering_smoothing_alpha": 0.3,
+    "_throttle_curve_power": "更直接的油门曲线。",
     "throttle_curve_power": 1.0,
+    "_steering_curve_power": "更直接的转向曲线。",
     "steering_curve_power": 1.2,
+    "_drive_speed_ramp_mps_per_s": "更快的加速度。",
     "drive_speed_ramp_mps_per_s": 5.0,
+    "_mode1": "mode1 的运动参数。",
     "mode1": {
+      "_turn_speed_min_scale": "更激进的转向最低速度比例。",
       "turn_speed_min_scale": 0.45,
+      "_turn_speed_curve_power": "更激进的转向速度曲线。",
       "turn_speed_curve_power": 1.2
     },
+    "_mode2": "mode2 的运动参数。",
     "mode2": {
+      "_speed_scale": "更快的安全模式速度缩放。",
       "speed_scale": 0.35,
+      "_turn_speed_min_scale": "更激进的安全模式最低速度比例。",
       "turn_speed_min_scale": 0.65,
+      "_turn_speed_curve_power": "更激进的安全模式曲线。",
       "turn_speed_curve_power": 1.0
     }
   }
